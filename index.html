@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Movie Night Ticket Scanner</title>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      text-align: center;
+      background: #0b0f19;
+      color: #fff;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 { font-size: 1.4rem; margin-bottom: 6px; }
+    p { color: #94a3b8; font-size: 0.9rem; margin-top: 0; margin-bottom: 20px; }
+    #reader {
+      max-width: 380px;
+      margin: 0 auto;
+      border-radius: 14px;
+      overflow: hidden;
+      background: #1e293b;
+      border: 1px solid #334155;
+    }
+    #result {
+      max-width: 380px;
+      margin: 20px auto 0;
+      padding: 16px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 1.15rem;
+      min-height: 48px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .idle { background: #1e293b; color: #94a3b8; }
+    .approved { background: #16a34a; color: #fff; }
+    .denied { background: #dc2626; color: #fff; }
+  </style>
+</head>
+<body>
+  <h1>🎬 Movie Night Scanner</h1>
+  <p>Point camera at ticket QR code</p>
+
+  <div id="reader"></div>
+  <div id="result" class="idle">Camera ready...</div>
+
+  <script>
+  // YOUR GOOGLE SCRIPT EXEC URL
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwFfbur5zDL1xm0CO_jKQ9k_VoOpfim6JADLF4DxYIfc801qPTdC8qPJYkOfBkQ7gibIQ/exec";
+
+let isScanning = true;
+
+    function onScanSuccess(decodedText) {
+      if (!isScanning) return;
+      isScanning = false;
+
+      const resultBox = document.getElementById("result");
+      resultBox.className = "idle";
+      resultBox.innerText = "Checking: " + decodedText + "...";
+
+      fetch(`${SCRIPT_URL}?id=${encodeURIComponent(decodedText)}`)
+        .then(response => response.json())
+        .then(data => {
+          resultBox.innerText = data.msg;
+          resultBox.className = data.success ? "approved" : "denied";
+
+          // 2.5 second cooldown before next scan
+          setTimeout(() => {
+            isScanning = true;
+            resultBox.innerText = "Camera ready...";
+            resultBox.className = "idle";
+          }, 2500);
+        })
+        .catch(err => {
+          resultBox.innerText = "Network Error. Check connection.";
+          resultBox.className = "denied";
+          setTimeout(() => { isScanning = true; }, 3000);
+        });
+    }
+
+    const html5QrCode = new Html5QrcodeScanner("reader", { 
+      fps: 10, 
+      qrbox: { width: 250, height: 250 } 
+    });
+    html5QrCode.render(onScanSuccess);
+  </script>
+</body>
+</html>
